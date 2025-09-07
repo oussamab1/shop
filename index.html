@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>متجر الأجهزة الإلكترونية — تجريبي</title>
+  <style>
+    :root{
+      --accent:#0b6fb2;
+      --muted:#666;
+      --card-bg:#fff;
+      --page-bg:#f4f6f8;
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background:var(--page-bg);
+      color:#111;
+      -webkit-font-smoothing:antialiased;
+    }
+    header{
+      background:linear-gradient(90deg,var(--accent),#075a8a);
+      color:#fff;
+      padding:18px 16px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .brand{font-size:20px;font-weight:700}
+    .search-wrap{flex:1; margin:0 16px; max-width:600px;}
+    .search-wrap input{
+      width: 100%; padding:10px 12px; border-radius:10px; border:none; outline:none;
+    }
+    .top-actions{display:flex;gap:10px;align-items:center}
+    .cart-btn{
+      background:transparent;border:1px solid rgba(255,255,255,0.2);
+      color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;position:relative;
+    }
+    .cart-count{
+      position:absolute; top:-6px; left:-6px; background:#ff3b30; color:#fff;
+      font-size:12px; padding:2px 6px; border-radius:12px;
+    }
+
+    main{padding:18px; max-width:1200px;margin:16px auto;}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+    .chip{background:#fff;border-radius:999px;padding:8px 12px;box-shadow:0 2px 6px rgba(0,0,0,0.06);cursor:pointer}
+    .products{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+      gap:16px;
+    }
+    .card{
+      background:var(--card-bg);
+      border-radius:var(--radius);
+      padding:12px;
+      box-shadow:0 6px 18px rgba(20,20,20,0.05);
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .card img{width:100%;height:160px;object-fit:contain;border-radius:8px;background:#fafafa}
+    .card h3{font-size:16px;margin:4px 0}
+    .price{color:green;font-weight:700}
+    .card .actions{margin-top:auto;display:flex;gap:8px}
+    button.btn{
+      padding:8px 10px;border-radius:8px;border:none;cursor:pointer;font-weight:600;
+    }
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-ghost{background:#f2f7fb;border:1px solid #e2eef7}
+
+    /* Cart sidebar */
+    .cart-side{
+      position:fixed; top:0; bottom:0; left:0; width:360px;
+      transform:translateX(-110%); transition:transform .28s ease;
+      background:#fff; box-shadow: 6px 0 30px rgba(0,0,0,0.12); padding:16px; z-index:80;
+      display:flex;flex-direction:column; gap:12px;
+    }
+    .cart-side.open{transform:translateX(0)}
+    .cart-item{display:flex;gap:10px;align-items:center}
+    .cart-item img{width:64px;height:64px;object-fit:cover;border-radius:8px}
+    .qty{display:flex;gap:6px;align-items:center}
+    .checkout-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:90;
+    }
+    .checkout-overlay.show{display:flex}
+    .checkout-card{background:#fff;padding:18px;border-radius:12px;width:420px;max-width:90%}
+    label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
+    input[type="text"],textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9ee}
+    .small{font-size:13px;color:var(--muted)}
+    footer{max-width:1200px;margin:20px auto;text-align:center;color:var(--muted);padding-bottom:40px}
+    @media (max-width:700px){
+      header{flex-direction:column;align-items:flex-start;gap:10px}
+      .search-wrap{max-width:100%}
+      .cart-side{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">متجر الأجهزة الإلكترونية</div>
+
+    <div class="search-wrap">
+      <input id="searchInput" placeholder="ابحث عن جهاز... (مثال: هاتف، لابتوب)" aria-label="بحث" />
+    </div>
+
+    <div class="top-actions">
+      <button class="chip" id="allBtn">الكل</button>
+      <button class="cart-btn" id="openCartBtn" aria-label="افتح السلة">
+        السلة <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="controls" id="categoryWrap">
+      <!-- فئات ستُعبأ بالديناميكي -->
+    </div>
+
+    <section class="products" id="productsGrid" aria-live="polite">
+      <!-- المنتجات تظهر هنا -->
+    </section>
+  </main>
+
+  <aside class="cart-side" id="cartSide" aria-hidden="true">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3>سلة المشتريات</h3>
+      <button id="closeCartBtn" class="btn btn-ghost">×</button>
+    </div>
+    <div id="cartItemsWrap" style="overflow:auto;flex:1"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">المجموع:</div>
+        <div id="cartTotal" style="font-weight:800;font-size:18px">0 د.م</div>
+      </div>
+      <div>
+        <button id="checkoutBtn" class="btn btn-primary">الدفع</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- نافذة الدفع (محاكاة) -->
+  <div class="checkout-overlay" id="checkoutOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="checkout-card">
+      <h3>استكمال الطلب</h3>
+      <form id="checkoutForm">
+        <div style="margin-bottom:10px">
+          <label for="name">الاسم الكامل</label>
+          <input id="name" required type="text" />
+        </div>
+        <div style="margin-bottom:10px">
+          <label for="phone">رقم الهاتف</label>
+          <input id="phone" required type="text" />
+        </div>
+        <div style="margin-bottom:10px">
+          <label for="address">العنوان</label>
+          <textarea id="address" rows="2" required></textarea>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button type="button" id="cancelCheckout" class="btn btn-ghost">إلغاء</button>
+          <button type="submit" class="btn btn-primary">تأكيد الطلب</button>
+        </div>
+      </form>
+      <div id="orderResult" style="margin-top:12px;display:none"></div>
+    </div>
+  </div>
+
+  <footer>© 2025 — متجر الأجهزة الإلكترونية (نسخة تجريبية)</footer>
+
+  <script>
+    /********************
+     * بيانات المنتجات (قابل للتوسيع)
+     ********************/
+    const PRODUCTS = [
+      {id:1,name:"هاتف ذكي X12",price:2599,category:"هواتف",img:"https://via.placeholder.com/400x300?text=Phone+X12",desc:"هاتف بشاشة 6.5\" وكاميرا 48MP",stock:10},
+      {id:2,name:"حاسوب محمول ProBook",price:6200,category:"حواسيب",img:"https://via.placeholder.com/400x300?text=Laptop+Pro",desc:"معالج قوي وذاكرة 8GB",stock:5},
+      {id:3,name:"سماعات لاسلكية AirBeat",price:399,category:"اكسسوارات",img:"https://via.placeholder.com/400x300?text=Headphones",desc:"عمر بطارية طويل ونقاء صوت ممتاز",stock:20},
+      {id:4,name:"تابلت Zeta",price:2100,category:"حواسيب",img:"https://via.placeholder.com/400x300?text=Tablet+Z",desc:"تابلت خفيف للاستخدام اليومي",stock:7},
+      {id:5,name:"شاحن سريع 30W",price:119,category:"اكسسوارات",img:"https://via.placeholder.com/400x300?text=Charger",desc:"شحن عالي السرعة",stock:50}
+    ];
+
+    /* حالة السلة */
+    let cart = {}; // key: productId, value: {product, qty}
+
+    /********************
+     * تهيئة الصفحة
+     ********************/
+    const productsGrid = document.getElementById('productsGrid');
+    const categoryWrap = document.getElementById('categoryWrap');
+    const searchInput = document.getElementById('searchInput');
+    const cartCount = document.getElementById('cartCount');
+    const cartSide = document.getElementById('cartSide');
+    const cartItemsWrap = document.getElementById('cartItemsWrap');
+    const cartTotal = document.getElementById('cartTotal');
+    const openCartBtn = document.getElementById('openCartBtn');
+    const closeCartBtn = document.getElementById('closeCartBtn');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const checkoutOverlay = document.getElementById('checkoutOverlay');
+    const checkoutForm = document.getElementById('checkoutForm');
+    const cancelCheckout = document.getElementById('cancelCheckout');
+    const orderResult = document.getElementById('orderResult');
+
+    // عرض الفئات
+    function initCategories(){
+      const cats = Array.from(new Set(PRODUCTS.map(p=>p.category)));
+      categoryWrap.innerHTML = '';
+      cats.forEach(c=>{
+        const b = document.createElement('button');
+        b.textContent = c;
+        b.className = 'chip';
+        b.onclick = ()=> { renderProducts({category:c}); }
+        categoryWrap.appendChild(b);
+      });
+    }
+
+    // عرض المنتجات (فلترة بحث/فئة)
+    function renderProducts({query='',category=''} = {}){
+      const q = query.trim().toLowerCase();
+      let list = PRODUCTS.filter(p=>{
+        if(category && p.category !== category) return false;
+        if(!q) return true;
+        return (p.name + ' ' + p.desc).toLowerCase().includes(q);
+      });
+      productsGrid.innerHTML = list.map(p=>`
+        <article class="card" aria-label="${p.name}">
+          <img src="${p.img}" alt="${p.name}" loading="lazy">
+          <h3>${p.name}</h3>
+          <div class="small">${p.desc}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <div class="price">${p.price.toLocaleString('ar-MA')} د.م</div>
+            <div style="font-size:13px;color:var(--muted)">${p.category}</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="addToCart(${p.id})">أضف للسلة</button>
+            <button class="btn btn-ghost" onclick="viewProduct(${p.id})">عرض</button>
+          </div>
+        </article>
+      `).join('');
+      if(list.length===0){
+        productsGrid.innerHTML = '<div style="padding:20px;background:#fff;border-radius:10px">لم يتم العثور على منتجات</div>';
+      }
+    }
+
+    // عرض صفحة منتج مبسطة (هنا: محاكاة بalert — يمكن توسيع)
+    function viewProduct(id){
+      const p = PRODUCTS.find(x=>x.id===id);
+      if(!p) return;
+      alert(`${p.name}\n\n${p.desc}\nالسعر: ${p.price.toLocaleString('ar-MA')} د.م\nالمخزون: ${p.stock}`);
+    }
+
+    // إضافة للسلة
+    function addToCart(productId){
+      const product = PRODUCTS.find(p=>p.id===productId);
+      if(!product) return;
+      if(cart[productId]) cart[productId].qty += 1;
+      else cart[productId] = {product:product, qty:1};
+      saveCart();
+      updateCartUI();
+      // افتح السلة تلقائياً
+      openCart();
+    }
+
+    // حذف
+    function removeFromCart(productId){
+      delete cart[productId];
+      saveCart();
+      updateCartUI();
+    }
+
+    // تحديث كمية
+    function setQty(productId, qty){
+      qty = parseInt(qty) || 0;
+      if(qty <= 0) removeFromCart(productId);
+      else {
+        cart[productId].qty = qty;
+        saveCart();
+      }
+      updateCartUI();
+    }
+
+    // حساب المجموع
+    function calculateTotal(){
+      let total = 0;
+      Object.values(cart).forEach(item => total += item.product.price * item.qty);
+      return total;
+    }
+
+    // تحديث واجهة السلة
+    function updateCartUI(){
+      const items = Object.values(cart);
+      cartCount.textContent = items.reduce((s,i)=>s+i.qty,0);
+      cartItemsWrap.innerHTML = items.length ? items.map(it=>`
+        <div class="cart-item" data-id="${it.product.id}">
+          <img src="${it.product.img}" alt="${it.product.name}">
+          <div style="flex:1">
+            <div style="font-weight:700">${it.product.name}</div>
+            <div class="small">${it.product.price.toLocaleString('ar-MA')} د.م</div>
+            <div class="qty" style="margin-top:6px">
+              <button onclick="setQty(${it.product.id}, ${it.qty-1})" class="btn btn-ghost">-</button>
+              <input onchange="setQty(${it.product.id}, this.value)" value="${it.qty}" style="width:48px;padding:6px;border-radius:6px;border:1px solid #eee;text-align:center" />
+              <button onclick="setQty(${it.product.id}, ${it.qty+1})" class="btn btn-ghost">+</button>
+              <button onclick="removeFromCart(${it.product.id})" class="btn btn-ghost" style="margin-left:8px">حذف</button>
+            </div>
+          </div>
+        </div>
+      `).join('') : '<div class="small">السلة فارغة</div>';
+      cartTotal.textContent = calculateTotal().toLocaleString('ar-MA') + ' د.م';
+    }
+
+    // فتح / غلق السلة
+    function openCart(){ cartSide.classList.add('open'); cartSide.setAttribute('aria-hidden','false'); }
+    function closeCart(){ cartSide.classList.remove('open'); cartSide.setAttribute('aria-hidden','true'); }
+
+    // حفظ واسترجاع من localStorage
+    function saveCart(){
+      const serial = {};
+      Object.keys(cart).forEach(k => serial[k] = cart[k].qty);
+      localStorage.setItem('demo_cart_v1', JSON.stringify(serial));
+    }
+    function loadCart(){
+      const raw = localStorage.getItem('demo_cart_v1');
+      if(!raw) return;
+      try{
+        const parsed = JSON.parse(raw);
+        Object.keys(parsed).forEach(k=>{
+          const product = PRODUCTS.find(p => p.id == k);
+          if(product) cart[k] = {product, qty: parsed[k]};
+        });
+      }catch(e){ console.warn(e) }
+    }
+
+    /********************
+     * أحداث واجهة
+     ********************/
+    document.getElementById('allBtn').addEventListener('click', ()=>{ renderProducts(); searchInput.value=''; });
+    searchInput.addEventListener('input', e => { renderProducts({query: e.target.value}); });
+    openCartBtn.addEventListener('click', openCart);
+    closeCartBtn.addEventListener('click', closeCart);
+
+    checkoutBtn.addEventListener('click', ()=>{
+      if(Object.keys(cart).length===0){ alert('السلة فارغة'); return; }
+      checkoutOverlay.classList.add('show');
+      checkoutOverlay.setAttribute('aria-hidden','false');
+    });
+    cancelCheckout.addEventListener('click', ()=>{
+      checkoutOverlay.classList.remove('show');
+      checkoutOverlay.setAttribute('aria-hidden','true');
+    });
+
+    checkoutForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+      if(!name||!phone||!address){ alert('المرجو ملء جميع الحقول'); return; }
+      // محاكاة إرسال الطلب
+      const orderId = 'ORD' + Date.now();
+      const total = calculateTotal();
+      orderResult.style.display = 'block';
+      orderResult.innerHTML = `<div style="padding:8px;background:#f7fff6;border-radius:8px">
+        شكراً ${name}!<br>تم إنشاء الطلب <strong>${orderId}</strong> بمجموع ${total.toLocaleString('ar-MA')} د.م.<br>سنتواصل معك على ${phone}.
+      </div>`;
+      // تفريغ السلة
+      cart = {};
+      saveCart();
+      updateCartUI();
+      // إغلاق بعد قليل (محاكاة)
+      setTimeout(()=>{ checkoutOverlay.classList.remove('show'); checkoutOverlay.setAttribute('aria-hidden','true'); orderResult.style.display='none'; checkoutForm.reset(); }, 3500);
+    });
+
+    // تهيئة الواجهة أولاً
+    initCategories();
+    loadCart();
+    updateCartUI();
+    renderProducts();
+
+    // expose بعض الدوال لعناصر inline (بسبب استخدام onclick في HTML)
+    window.addToCart = addToCart;
+    window.viewProduct = viewProduct;
+    window.removeFromCart = removeFromCart;
+    window.setQty = setQty;
+  </script>
+</body>
+</html>
